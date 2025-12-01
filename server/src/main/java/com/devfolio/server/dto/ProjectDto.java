@@ -1,18 +1,21 @@
+// server/src/main/java/com/devfolio/server/dto/ProjectDto.java
 package com.devfolio.server.dto;
 
 import lombok.Data;
 import java.util.List;
 
-@Data
 public class ProjectDto {
-    // 등록/수정 요청용
-    private String title;
-    private String description;
-    private String githubUrl;
-    private String websiteUrl;
-    private List<String> techStack; // "React", "Spring" 등
 
-    // 조회 응답용 (Response)
+    @Data
+    public static class Request {
+        private String title;
+        private String description;
+        private String githubUrl;
+        private String websiteUrl;
+        private List<String> techStack;
+        private List<String> imageUrls;
+    }
+
     @Data
     public static class Response {
         private Long id;
@@ -22,6 +25,10 @@ public class ProjectDto {
         private String websiteUrl;
         private List<String> techStack;
         private List<String> imageUrls;
-        private String authorName; // 작성자 닉네임
+
+        // 작성자 정보 (카드 UI에 표시할 것들)
+        private Long memberId;
+        private String authorName;
+        private String authorJob;
     }
 }

@@ -1,24 +1,36 @@
-import "./global.css";
-import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import CreateProject from "./pages/CreateProject";
-import MyPage from "./pages/MyPage";
-import NotFound from "./pages/NotFound";
+import { Switch, Route } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
+import { Toaster } from "@/components/ui/toaster";
+import Index from "@/pages/Index";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import MyPage from "@/pages/MyPage";
+import MemberDetail from "@/pages/MemberDetail.tsx";
+import ProjectDetail from "@/pages/ProjectDetail"; // 새로 만들 파일 import
+import NotFound from "@/pages/NotFound";
 
-const App = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/project/create" element={<CreateProject />} />
-      <Route path="/my-page" element={<MyPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </BrowserRouter>
-);
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Index} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/mypage" component={MyPage} />
+      <Route path="/portfolio/:id" component={MemberDetail} />
+      <Route path="/project/:id" component={ProjectDetail} /> {/* 추가됨 */}
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
 
-createRoot(document.getElementById("root")!).render(<App />);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router />
+      <Toaster />
+    </QueryClientProvider>
+  );
+}
+
+export default App;

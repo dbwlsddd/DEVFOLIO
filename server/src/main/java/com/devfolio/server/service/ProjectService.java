@@ -1,3 +1,4 @@
+// server/src/main/java/com/devfolio/server/service/ProjectService.java
 package com.devfolio.server.service;
 
 import com.devfolio.server.domain.Member;
@@ -8,33 +9,40 @@ import com.devfolio.server.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final MemberRepository memberRepository;
-    private final FileService fileService;
 
-    @Transactional
-    public void createProject(String username, ProjectDto request, List<MultipartFile> images) throws IOException {
-        Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("사용자 없음"));
+    // 프로젝트 목록 조회 (검색 기능 포함)
+    public List<ProjectDto.Response> getProjects(String keyword, String type) {
+        List<Project> projects;
 
-        List<String> imagePaths = new ArrayList<>();
-        if (images != null) {
-            for (MultipartFile img : images) {
-                String path = fileService.saveFile(img);
-                if (path != null) imagePaths.add(path);
-            }
+        if (keyword == null || keyword.isBlank()) {
+            projects = projectRepository.findAll();
+        } else if ("stack".equalsIgnoreCase(type)) {
+            projects = projectRepository.findByTechStackContaining(keyword);
+        } else {
+            projects = projectRepository.findByTitleContaining(keyword);
         }
+
+        return projects.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // 프로젝트 생성
+    @Transactional
+    public ProjectDto.Response createProject(String username, ProjectDto.Request request) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
 
         Project project = Project.builder()
                 .title(request.getTitle())
@@ -42,38 +50,53 @@ public class ProjectService {
                 .githubUrl(request.getGithubUrl())
                 .websiteUrl(request.getWebsiteUrl())
                 .techStack(request.getTechStack())
-                .imageUrls(imagePaths)
-                .member(member)
+                .imageUrls(request.getImageUrls())
                 .build();
 
-        projectRepository.save(project);
+        project.setMember(member); // 연관관계 설정
+
+        Project savedProject = projectRepository.save(project);
+        return convertToResponse(savedProject);
     }
 
-    // 전체 조회 (다른 사람 것 포함)
-    public List<ProjectDto.Response> getAllProjects() {
-        return projectRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    // 프로젝트 삭제
+    @Transactional
+    public void deleteProject(Long projectId, String username) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트가 존재하지 않습니다."));
+
+        // 작성자 본인 확인
+        if (!project.getMember().getUsername().equals(username)) {
+            throw new IllegalArgumentException("삭제 권한이 없습니다."); // Controller에서 403 처리 권장
+        }
+
+        projectRepository.delete(project);
     }
 
-    // 내 프로젝트 조회
-    public List<ProjectDto.Response> getMyProjects(String username) {
-        return projectRepository.findByMemberUsername(username).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+
+    // (내부 헬퍼 메소드) Entity -> DTO 변환
+    private ProjectDto.Response convertToResponse(Project p) {
+        ProjectDto.Response dto = new ProjectDto.Response();
+        dto.setId(p.getId());
+        dto.setTitle(p.getTitle());
+        dto.setDescription(p.getDescription());
+        dto.setGithubUrl(p.getGithubUrl());
+        dto.setWebsiteUrl(p.getWebsiteUrl());
+        dto.setTechStack(p.getTechStack());
+        dto.setImageUrls(p.getImageUrls());
+
+        if (p.getMember() != null) {
+            dto.setMemberId(p.getMember().getId());
+            dto.setAuthorName(p.getMember().getNickname());
+            dto.setAuthorJob(p.getMember().getJobTitle());
+        }
+        return dto;
     }
 
-    // DTO 변환기
-    private ProjectDto.Response toResponse(Project p) {
-        ProjectDto.Response res = new ProjectDto.Response();
-        res.setId(p.getId());
-        res.setTitle(p.getTitle());
-        res.setDescription(p.getDescription());
-        res.setGithubUrl(p.getGithubUrl());
-        res.setWebsiteUrl(p.getWebsiteUrl());
-        res.setTechStack(p.getTechStack());
-        res.setImageUrls(p.getImageUrls());
-        res.setAuthorName(p.getMember().getNickname());
-        return res;
+    // 프로젝트 상세 조회
+    public ProjectDto.Response getProject(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
+        return convertToResponse(project);
     }
 }

@@ -1,3 +1,4 @@
+// server/src/main/java/com/devfolio/server/controller/AuthController.java
 package com.devfolio.server.controller;
 
 import com.devfolio.server.dto.AuthDto;
@@ -9,19 +10,20 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     private final AuthService authService;
 
+    // 회원가입
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody AuthDto.SignupRequest request) {
+    public ResponseEntity<?> signup(@RequestBody AuthDto.SignupRequest request) {
         authService.signup(request);
         return ResponseEntity.ok("회원가입 성공");
     }
 
+    // 로그인
     @PostMapping("/login")
-    public ResponseEntity<AuthDto.TokenResponse> login(@RequestBody AuthDto.LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody AuthDto.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 }

@@ -7,16 +7,23 @@ import Header from "@/components/Header";
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: "", password: "", nickname: "", jobTitle: ""
+    username: "", password: "", nickname: "", jobTitle: "", techStack: ""
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 콤마로 구분된 문자열을 리스트로 변환
+    const payload = {
+      ...formData,
+      techStack: formData.techStack.split(",").map(t => t.trim()).filter(t => t.length > 0)
+    };
+
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -55,6 +62,10 @@ export default function Register() {
             <div>
               <label className="text-sm font-medium">Job Title (e.g. Backend Dev)</label>
               <Input required onChange={(e) => setFormData({...formData, jobTitle: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tech Stack (comma separated)</label>
+              <Input placeholder="Java, Spring, React..." onChange={(e) => setFormData({...formData, techStack: e.target.value})} />
             </div>
             <Button type="submit" className="w-full mt-4">가입하기</Button>
           </form>

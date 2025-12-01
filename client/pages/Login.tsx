@@ -21,7 +21,12 @@ export default function Login() {
       if (res.ok) {
         const data = await res.json();
         setToken(data.token);
-        setUser({ username: data.username, nickname: data.nickname });
+        // memberId도 같이 저장 (나중에 상세 페이지 이동 등에 사용)
+        setUser({
+          memberId: data.memberId,
+          username: data.username,
+          nickname: data.nickname
+        });
         alert("로그인 성공!");
         navigate("/");
       } else {
