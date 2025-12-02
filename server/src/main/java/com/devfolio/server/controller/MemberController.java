@@ -1,4 +1,3 @@
-// server/src/main/java/com/devfolio/server/controller/MemberController.java
 package com.devfolio.server.controller;
 
 import com.devfolio.server.domain.Member;
@@ -23,6 +22,12 @@ public class MemberController {
     public List<Member> getMembers(@RequestParam(required = false) String keyword,
                                    @RequestParam(required = false, defaultValue = "name") String type) {
         return memberService.getMembers(keyword, type);
+    }
+
+    // [추가됨] 내 정보 조회 (순서 중요: /{id} 보다 명시적인 경로가 우선순위를 가짐)
+    @GetMapping("/me")
+    public ResponseEntity<Member> getMyProfile(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(memberService.getMyProfile(userDetails.getUsername()));
     }
 
     // [상세 조회] 특정 개발자 정보

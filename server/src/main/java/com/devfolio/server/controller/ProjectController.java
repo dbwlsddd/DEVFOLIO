@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,11 +26,30 @@ public class ProjectController {
         return projectService.getProjects(keyword, type);
     }
 
-    // [프로젝트 등록]
-    @PostMapping
-    public ResponseEntity<ProjectDto.Response> createProject(@AuthenticationPrincipal UserDetails userDetails,
-                                                             @RequestBody ProjectDto.Request request) {
-        return ResponseEntity.ok(projectService.createProject(userDetails.getUsername(), request));
+    // [추가됨] 내 프로젝트 조회
+    // 주의: @GetMapping("/{id}") 보다 위에 위치해야 안전하게 라우팅됩니다.
+    @GetMapping("/my")
+    public List<ProjectDto.Response> getMyProjects(@AuthenticationPrincipal UserDetails userDetails) {
+        return projectService.getMyProjects(userDetails.getUsername());
+    }
+
+    // [수정] 프로젝트 등록 (파일 업로드 지원)
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ResponseEntity<ProjectDto.Response> createProject(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestPart("data") ProjectDto.Request request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        return ResponseEntity.ok(projectService.createProject(userDetails.getUsername(), request, images));
+    }
+
+    // [수정] 프로젝트 수정 (파일 업로드 지원)
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    public ResponseEntity<ProjectDto.Response> updateProject(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestPart("data") ProjectDto.Request request,
+            @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) {
+        return ResponseEntity.ok(projectService.updateProject(id, userDetails.getUsername(), request, newImages));
     }
 
     // [프로젝트 삭제]

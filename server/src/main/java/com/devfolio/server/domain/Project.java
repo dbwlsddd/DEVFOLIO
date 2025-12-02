@@ -1,8 +1,9 @@
-// server/src/main/java/com/devfolio/server/domain/Project.java
 package com.devfolio.server.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -23,24 +24,33 @@ public class Project {
     private String githubUrl; // 깃허브 링크
     private String websiteUrl; // 배포 사이트 링크
 
-    // 프로젝트에 사용된 기술 스택 (검색용)
     @ElementCollection
-    private List<String> techStack;
+    @Builder.Default
+    private List<String> techStack = new ArrayList<>();
 
-    // 이미지 경로 리스트 (썸네일 등)
     @ElementCollection
-    private List<String> imageUrls;
+    @Builder.Default
+    private List<String> imageUrls = new ArrayList<>();
 
-    // 작성자 (Member와 N:1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
+    @JsonIgnore
     private Member member;
 
-    // 연관관계 편의 메소드 (작성자 설정 시 리스트에도 추가)
     public void setMember(Member member) {
         this.member = member;
         if (member != null && !member.getProjects().contains(this)) {
             member.getProjects().add(this);
         }
+    }
+
+    // [추가] 정보 수정 메소드
+    public void update(String title, String description, List<String> techStack, String githubUrl, String websiteUrl) {
+        this.title = title;
+        this.description = description;
+        this.techStack = techStack;
+        this.githubUrl = githubUrl;
+        this.websiteUrl = websiteUrl;
+        // 이미지는 별도 로직이 필요할 수 있으므로 여기선 제외하거나 필요 시 추가
     }
 }

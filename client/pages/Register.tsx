@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter"; // [수정 1] react-router-dom -> wouter
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 
 export default function Register() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation(); // [수정 2] useNavigate -> useLocation 사용
   const [formData, setFormData] = useState({
     username: "", password: "", nickname: "", jobTitle: "", techStack: ""
   });
@@ -28,7 +28,7 @@ export default function Register() {
 
       if (res.ok) {
         alert("회원가입 성공! 로그인해주세요.");
-        navigate("/login");
+        setLocation("/login"); // [수정 3] navigate -> setLocation
       } else {
         alert("회원가입 실패. 이미 존재하는 아이디일 수 있습니다.");
       }

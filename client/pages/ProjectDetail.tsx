@@ -1,10 +1,8 @@
-// 한 프로젝트에 대한 상세
-
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { Project } from "@shared/api";
-import { ChevronLeft, Github, ExternalLink, User } from "lucide-react";
+import { ChevronLeft, Github, ExternalLink, User, Edit } from "lucide-react"; // [수정] Edit 아이콘 추가
 import {
   Carousel,
   CarouselContent,
@@ -12,11 +10,13 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { getUser } from "@/lib/auth"; // [수정] 로그인 유저 정보 가져오기
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const user = getUser(); // [수정] 현재 로그인한 유저 정보
 
   useEffect(() => {
     fetch(`/api/projects/${id}`)
@@ -24,7 +24,10 @@ export default function ProjectDetail() {
         if (!res.ok) throw new Error("Project not found");
         return res.json();
       })
-      .then(setProject)
+      .then((data) => {
+        setProject(data);
+        setLoading(false);
+      })
       .catch((err) => {
         console.error(err);
         setLoading(false);
@@ -34,16 +37,26 @@ export default function ProjectDetail() {
   if (loading) return null;
   if (!project) return <div className="p-20 text-center">Project not found</div>;
 
+  // [수정] 본인 프로젝트인지 확인 (로그인 유저 ID와 프로젝트 작성자 ID 비교)
+  const isMyProject = user && project.memberId === user.memberId;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       {/* 상단 네비게이션 */}
       <div className="bg-white border-b px-6 py-4">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto flex justify-between items-center"> {/* [수정] flex, justify-between 추가 */}
           <Link href="/" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition w-fit">
             <ChevronLeft size={16} /> Back to Browse
           </Link>
+
+          {/* [수정] 작성자 본인일 경우 수정 버튼 표시 */}
+          {isMyProject && (
+            <Link href={`/project/edit/${id}`} className="flex items-center gap-2 text-sm font-medium border px-3 py-1.5 rounded hover:bg-slate-50 transition">
+              <Edit size={16} /> Edit Project
+            </Link>
+          )}
         </div>
       </div>
 
@@ -92,7 +105,7 @@ export default function ProjectDetail() {
             <div>
               <h1 className="text-3xl font-bold mb-2">{project.title}</h1>
               <div className="flex flex-wrap gap-2 mt-4">
-                {project.techStack.map((t, i) => (
+                {(project.techStack || []).map((t, i) => (
                   <span key={i} className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
                       {t}
                     </span>

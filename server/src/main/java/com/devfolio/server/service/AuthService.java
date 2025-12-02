@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,21 +24,26 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
     // 회원가입
+    // 기존 signup 메서드 내부 수정
     @Transactional
     public void signup(AuthDto.SignupRequest request) {
         if (memberRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+            throw new IllegalArgumentException("이미 존재하는 회원입니다.");
         }
+
+        // [수정] 기술 스택 소문자 변환 및 공백 제거
+        List<String> normalizedTechStack = request.getTechStack().stream()
+                .map(String::trim)        // 앞뒤 공백 제거
+                .map(String::toLowerCase) // 소문자로 변환
+                .collect(Collectors.toList());
 
         Member member = Member.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .nickname(request.getNickname())
                 .jobTitle(request.getJobTitle())
+                .techStack(normalizedTechStack) // [수정] 변환된 리스트 사용
                 .role(Member.Role.USER)
-                .techStack(request.getTechStack() != null ? request.getTechStack() : Collections.emptyList())
-                .bio(request.getBio())
-                .githubUrl(request.getGithubUrl())
                 .build();
 
         memberRepository.save(member);

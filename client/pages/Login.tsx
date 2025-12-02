@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, Link } from "wouter"; // [수정 1] react-router-dom -> wouter
 import { setToken, setUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 
 export default function Login() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation(); // [수정 2] useNavigate -> useLocation 훅 사용
   const [formData, setFormData] = useState({ username: "", password: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +28,7 @@ export default function Login() {
           nickname: data.nickname
         });
         alert("로그인 성공!");
-        navigate("/");
+        setLocation("/"); // [수정 3] navigate("/") -> setLocation("/")
       } else {
         alert("로그인 실패: 아이디나 비밀번호를 확인하세요.");
       }
@@ -68,7 +68,8 @@ export default function Login() {
             <Button type="submit" className="w-full">로그인</Button>
           </form>
           <div className="text-center text-sm">
-            계정이 없으신가요? <Link to="/register" className="underline font-bold">회원가입</Link>
+            {/* [수정 4] Link to -> Link href */}
+            계정이 없으신가요? <Link href="/register" className="underline font-bold">회원가입</Link>
           </div>
         </div>
       </div>

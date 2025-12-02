@@ -1,4 +1,3 @@
-// server/src/main/java/com/devfolio/server/service/MemberService.java
 package com.devfolio.server.service;
 
 import com.devfolio.server.domain.Member;
@@ -8,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,29 +25,42 @@ public class MemberService {
         if ("stack".equalsIgnoreCase(type)) {
             return memberRepository.findByTechStackContaining(keyword);
         } else {
-            return memberRepository.findByNicknameContaining(keyword); // 기본은 이름 검색
+            return memberRepository.findByNicknameContaining(keyword);
         }
     }
 
-    // 특정 개발자 상세 조회
+    // [추가됨] 내 정보 조회 (Username으로 조회)
+    public Member getMyProfile(String username) {
+        return memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+    }
+
+    // 특정 개발자 상세 조회 (ID로 조회)
     public Member getMember(Long id) {
         return memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
     }
 
     // 내 정보 수정
+    // 기존 updateMyProfile 메서드 내부 수정
     @Transactional
     public Member updateMyProfile(String username, Member updateData) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
-        // 변경 감지(Dirty Checking)를 통해 save 호출 없이도 트랜잭션 종료 시 업데이트됨
+        // [수정] 기술 스택 소문자 변환 및 공백 제거
+        List<String> normalizedTechStack = updateData.getTechStack().stream()
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
         member.setNickname(updateData.getNickname());
         member.setJobTitle(updateData.getJobTitle());
         member.setBio(updateData.getBio());
         member.setGithubUrl(updateData.getGithubUrl());
         member.setBlogUrl(updateData.getBlogUrl());
-        member.setTechStack(updateData.getTechStack());
+
+        member.setTechStack(normalizedTechStack); // [수정] 변환된 리스트 저장
 
         return member;
     }

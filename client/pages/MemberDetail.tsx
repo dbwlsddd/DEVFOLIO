@@ -1,13 +1,14 @@
 import Header from "@/components/Header";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "wouter";
 import { ChevronLeft, ExternalLink, Github, Edit2, Link as LinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Member } from "@shared/api"; // Portfolio 대신 Member
-import { getUser } from "@/lib/auth"; // 로그인 유저 확인용
+import { Member } from "@shared/api";
+import { getUser } from "@/lib/auth";
 
 export default function MemberDetail() {
+  // [수정] useParams에 제네릭 타입 <{ id: string }> 추가 및 구조 분해 할당 사용
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +55,7 @@ export default function MemberDetail() {
           <p className="text-muted-foreground text-lg mb-8">
             We couldn't find the developer you're looking for.
           </p>
-          <Link to="/" className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded font-medium hover:opacity-90 transition">
+          <Link href="/" className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded font-medium hover:opacity-90 transition">
             <ChevronLeft size={20} />
             Back to Browse
           </Link>
@@ -70,15 +71,15 @@ export default function MemberDetail() {
       {/* Back & Edit Buttons */}
       <div className="bg-white border-b border-border px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="flex items-center gap-2 text-black hover:opacity-70 transition w-fit">
+          <Link href="/" className="flex items-center gap-2 text-black hover:opacity-70 transition w-fit">
             <ChevronLeft size={20} />
             Back to Browse
           </Link>
 
-          {/* 본인 프로필일 때만 수정 버튼 노출 (경로는 재사용) */}
+          {/* 본인 프로필일 때만 수정 버튼 노출 */}
           {isMyProfile && (
             <Link
-              to={`/portfolio/edit/${member.id}`} // 경로는 기존 유지하되 내용은 EditProfile임
+              href={`/portfolio/edit/${member.id}`}
               className="flex items-center gap-2 border border-black text-black px-4 py-2 rounded font-medium hover:bg-black/5 transition text-sm"
             >
               <Edit2 size={16} />
@@ -194,7 +195,7 @@ export default function MemberDetail() {
                   </div>
 
                   <div className="flex gap-4 mt-auto pt-4 border-t">
-                    <Link to={`/project/${project.id}`} className="text-sm font-bold underline hover:text-primary">
+                    <Link href={`/project/${project.id}`} className="text-sm font-bold underline hover:text-primary">
                       View Details
                     </Link>
                     {project.githubUrl && (

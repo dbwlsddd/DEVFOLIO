@@ -7,8 +7,11 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import MyPage from "@/pages/MyPage";
 import MemberDetail from "@/pages/MemberDetail.tsx";
-import ProjectDetail from "@/pages/ProjectDetail"; // 새로 만들 파일 import
+import ProjectDetail from "@/pages/ProjectDetail";
+import CreateProject from "@/pages/CreateProject"; // [추가] import
 import NotFound from "@/pages/NotFound";
+import EditProfile from "@/pages/EditProfile"; // (혹시 빠져있다면 추가)
+import EditProject from "@/pages/EditProject";
 
 function Router() {
   return (
@@ -18,7 +21,13 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/mypage" component={MyPage} />
       <Route path="/portfolio/:id" component={MemberDetail} />
-      <Route path="/project/:id" component={ProjectDetail} /> {/* 추가됨 */}
+      <Route path="/portfolio/edit/:id" component={EditProfile} />
+
+      {/* [중요] create가 :id보다 먼저 와야 합니다! */}
+      <Route path="/project/create" component={CreateProject} />
+      <Route path="/project/edit/:id" component={EditProject} />
+      <Route path="/project/:id" component={ProjectDetail} />
+
       <Route component={NotFound} />
     </Switch>
   );

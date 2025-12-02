@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { authHeader, getUser } from "@/lib/auth";
 import { Project } from "@shared/api";
 import Header from "@/components/Header";
-import { Link } from "react-router-dom";
+import { Link } from "wouter"; // [수정 1] react-router-dom -> wouter
 import { ExternalLink, Github, Plus } from "lucide-react";
 
 export default function MyPage() {
@@ -27,7 +27,8 @@ export default function MyPage() {
             <h1 className="text-3xl font-bold">{user.nickname}'s Portfolio</h1>
             <p className="text-muted-foreground mt-1">@{user.username}</p>
           </div>
-          <Link to="/project/create" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">
+          {/* [수정 2] Link to -> Link href */}
+          <Link href="/project/create" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">
             <Plus size={16} /> Add Project
           </Link>
         </div>

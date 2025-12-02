@@ -1,12 +1,12 @@
 import Header from "@/components/Header";
 import { ChevronLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "wouter"; // [수정] react-router-dom -> wouter
 import { useEffect } from "react";
-import { Member } from "@shared/api"; // Portfolio 대신 Member 사용
+import { Member } from "@shared/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { authHeader } from "@/lib/auth"; // 인증 헤더 필요
+import { authHeader } from "@/lib/auth";
 
 import {
   Form,
@@ -25,7 +25,7 @@ const formSchema = z.object({
   nickname: z.string().min(2, { message: "닉네임은 2자 이상이어야 합니다." }),
   jobTitle: z.string().min(2, { message: "직군/타이틀은 2자 이상이어야 합니다." }),
   bio: z.string().optional(),
-  techStack: z.string().optional(), // 쉼표로 구분된 문자열로 입력받음
+  techStack: z.string().optional(),
   githubUrl: z.string().optional(),
   blogUrl: z.string().optional(),
 });
@@ -33,7 +33,7 @@ const formSchema = z.object({
 type ProfileFormData = z.infer<typeof formSchema>;
 
 export default function EditProfile() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation(); // [수정] useNavigate 대신 사용
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(formSchema),
@@ -49,7 +49,7 @@ export default function EditProfile() {
 
   // 내 정보 불러오기 (Load My Profile)
   useEffect(() => {
-    fetch(`/api/members/me`, { headers: authHeader() }) // 로그인한 사용자 정보 호출
+    fetch(`/api/members/me`, { headers: authHeader() })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load profile");
         return res.json();
@@ -61,20 +61,18 @@ export default function EditProfile() {
           bio: data.bio || "",
           githubUrl: data.githubUrl || "",
           blogUrl: data.blogUrl || "",
-          // 배열 -> 쉼표 문자열 변환
           techStack: data.techStack ? data.techStack.join(", ") : "",
         });
       })
       .catch((err) => {
         console.error("Failed to load profile:", err);
         alert("로그인이 필요하거나 정보를 불러올 수 없습니다.");
-        navigate("/login");
+        setLocation("/login"); // [수정] navigate -> setLocation
       });
-  }, [form, navigate]);
+  }, [form, setLocation]);
 
   // 수정 제출 (UPDATE)
   async function onSubmit(values: ProfileFormData) {
-    // 쉼표로 구분된 techStack 문자열을 배열로 변환
     const techStackArray = values.techStack
       ? values.techStack.split(',').map(s => s.trim()).filter(s => s.length > 0)
       : [];
@@ -96,7 +94,7 @@ export default function EditProfile() {
 
       if (res.ok) {
         alert("프로필이 성공적으로 수정되었습니다!");
-        navigate("/mypage"); // 마이페이지로 이동
+        setLocation("/mypage"); // [수정] navigate -> setLocation
       } else {
         alert("프로필 수정 실패.");
       }
@@ -111,7 +109,8 @@ export default function EditProfile() {
       <Header />
       <div className="bg-white border-b border-border px-6 py-4">
         <div className="max-w-3xl mx-auto">
-          <Link to="/mypage" className="flex items-center gap-2 text-black hover:opacity-70 transition w-fit">
+          {/* [수정] Link to -> Link href */}
+          <Link href="/mypage" className="flex items-center gap-2 text-black hover:opacity-70 transition w-fit">
             <ChevronLeft size={20} />
             Back to My Page
           </Link>
