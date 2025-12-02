@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { Project } from "@shared/api";
-import { ChevronLeft, Github, ExternalLink, User, Edit } from "lucide-react"; // [수정] Edit 아이콘 추가
+import { ChevronLeft, Github, ExternalLink, Edit, Eye, Heart } from "lucide-react"; // [추가] Eye, Heart 아이콘
 import {
   Carousel,
   CarouselContent,
@@ -10,16 +10,20 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { getUser } from "@/lib/auth"; // [수정] 로그인 유저 정보 가져오기
+import { getUser, authHeader } from "@/lib/auth"; // authHeader 추가
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const user = getUser(); // [수정] 현재 로그인한 유저 정보
+  const user = getUser();
 
-  useEffect(() => {
-    fetch(`/api/projects/${id}`)
+  // 데이터 불러오기 함수 (재사용을 위해 분리)
+  const fetchProject = () => {
+    // 로그인 상태라면 헤더를 포함해서 요청해야 '좋아요 여부'를 알 수 있음
+    const headers = user ? authHeader() : {};
+
+    fetch(`/api/projects/${id}`, { headers })
       .then((res) => {
         if (!res.ok) throw new Error("Project not found");
         return res.json();
@@ -32,12 +36,37 @@ export default function ProjectDetail() {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchProject();
   }, [id]);
+
+  // 좋아요 핸들러
+  const handleLike = async () => {
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/projects/${id}/like`, {
+        method: "POST",
+        headers: authHeader(),
+      });
+
+      if (res.ok) {
+        // 성공 시 데이터 새로고침 (좋아요 수 및 상태 업데이트)
+        fetchProject();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) return null;
   if (!project) return <div className="p-20 text-center">Project not found</div>;
 
-  // [수정] 본인 프로젝트인지 확인 (로그인 유저 ID와 프로젝트 작성자 ID 비교)
   const isMyProject = user && project.memberId === user.memberId;
 
   return (
@@ -46,12 +75,11 @@ export default function ProjectDetail() {
 
       {/* 상단 네비게이션 */}
       <div className="bg-white border-b px-6 py-4">
-        <div className="max-w-5xl mx-auto flex justify-between items-center"> {/* [수정] flex, justify-between 추가 */}
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition w-fit">
             <ChevronLeft size={16} /> Back to Browse
           </Link>
 
-          {/* [수정] 작성자 본인일 경우 수정 버튼 표시 */}
           {isMyProject && (
             <Link href={`/project/edit/${id}`} className="flex items-center gap-2 text-sm font-medium border px-3 py-1.5 rounded hover:bg-slate-50 transition">
               <Edit size={16} /> Edit Project
@@ -91,9 +119,33 @@ export default function ProjectDetail() {
               )}
             </div>
 
-            {/* 프로젝트 설명 */}
+            {/* [추가] 통계 및 설명 영역 */}
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">About this Project</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">About this Project</h2>
+
+                {/* 조회수 & 좋아요 표시 */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5 text-muted-foreground" title="Views">
+                    <Eye size={20} />
+                    <span className="font-medium">{project.viewCount}</span>
+                  </div>
+
+                  <button
+                    onClick={handleLike}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition border ${
+                      project.liked
+                        ? "bg-pink-50 border-pink-200 text-pink-600"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                    title="Like this project"
+                  >
+                    <Heart size={18} fill={project.liked ? "currentColor" : "none"} />
+                    <span className="font-medium">{project.likeCount}</span>
+                  </button>
+                </div>
+              </div>
+
               <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
                 {project.description}
               </p>
@@ -102,6 +154,7 @@ export default function ProjectDetail() {
 
           {/* 오른쪽: 정보 및 작성자 카드 */}
           <div className="space-y-8">
+            {/* ... 기존 내용 유지 ... */}
             <div>
               <h1 className="text-3xl font-bold mb-2">{project.title}</h1>
               <div className="flex flex-wrap gap-2 mt-4">
@@ -126,8 +179,9 @@ export default function ProjectDetail() {
               )}
             </div>
 
-            {/* 작성자 프로필 카드 */}
+            {/* 작성자 카드 유지 ... */}
             <div className="border rounded-xl p-6 bg-white shadow-sm">
+              {/* ... (기존 코드와 동일) ... */}
               <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Created By</h3>
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center text-xl font-bold text-slate-500">

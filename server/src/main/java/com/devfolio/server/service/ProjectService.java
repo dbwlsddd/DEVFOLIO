@@ -9,9 +9,11 @@ import com.devfolio.server.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile; // 추가
-import java.util.ArrayList; // 추가
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page; // 추가
+import org.springframework.data.domain.Pageable; // 추가
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,35 +26,45 @@ public class ProjectService {
     private final MemberRepository memberRepository;
     private final FileStorageService fileStorageService;
 
-    // 프로젝트 목록 조회 (검색 기능 포함)
-    public List<ProjectDto.Response> getProjects(String keyword, String type) {
-        List<Project> projects;
+    // [수정] 프로젝트 목록 조회 (Pageable 추가, 반환 타입 Page로 변경)
+    public Page<ProjectDto.Response> getProjects(String keyword, String type, Pageable pageable) {
+        Page<Project> projectPage;
 
         if (keyword == null || keyword.isBlank()) {
-            projects = projectRepository.findAll();
+            projectPage = projectRepository.findAll(pageable);
         } else if ("stack".equalsIgnoreCase(type)) {
-            projects = projectRepository.findByTechStackContaining(keyword);
+            projectPage = projectRepository.findByTechStackContaining(keyword, pageable);
         } else {
-            projects = projectRepository.findByTitleContaining(keyword);
+            projectPage = projectRepository.findByTitleContaining(keyword, pageable);
         }
 
-        return projects.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+        // Page<Entity> -> Page<Dto> 변환 (map 함수 사용)
+        return projectPage.map(this::convertToResponse);
     }
 
-    // [추가됨] 내 프로젝트 목록 조회
+    // 내 프로젝트 목록 조회
     public List<ProjectDto.Response> getMyProjects(String username) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
 
-        // Member 엔티티가 이미 프로젝트 리스트를 가지고 있으므로 이를 활용
         return member.getProjects().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
-    // [수정] 프로젝트 생성 (이미지 저장 로직 추가)
+    // 프로젝트 상세 조회 (조회수 증가 + 좋아요 여부 확인)
+    @Transactional
+    public ProjectDto.Response getProject(Long id, String username) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
+
+        // 조회수 증가
+        project.setViewCount(project.getViewCount() + 1);
+
+        return convertToResponse(project, username);
+    }
+
+    // 프로젝트 생성 (이미지 저장 로직 포함)
     @Transactional
     public ProjectDto.Response createProject(String username, ProjectDto.Request request, List<MultipartFile> images) {
         Member member = memberRepository.findByUsername(username)
@@ -77,14 +89,14 @@ public class ProjectService {
                 .githubUrl(request.getGithubUrl())
                 .websiteUrl(request.getWebsiteUrl())
                 .techStack(normalizedTechStack)
-                .imageUrls(imageUrls) // 저장된 URL 리스트 사용
+                .imageUrls(imageUrls)
                 .build();
 
         project.setMember(member);
         return convertToResponse(projectRepository.save(project));
     }
 
-    // [수정] 프로젝트 수정 (이미지 추가/삭제 로직 포함)
+    // 프로젝트 수정 (이미지 추가/삭제 로직 포함)
     @Transactional
     public ProjectDto.Response updateProject(Long id, String username, ProjectDto.Request request, List<MultipartFile> newImages) {
         Project project = projectRepository.findById(id)
@@ -94,18 +106,17 @@ public class ProjectService {
             throw new IllegalArgumentException("수정 권한이 없습니다.");
         }
 
-        // 1. 기존 이미지 중 유지할 것만 남기고, 삭제된 것은 파일도 삭제
+        // 1. 이미지 처리 (삭제된 파일 정리)
         List<String> remainingUrls = request.getImageUrls() != null ? request.getImageUrls() : new ArrayList<>();
         List<String> currentUrls = project.getImageUrls();
 
-        // (삭제된 파일 정리: 현재 DB엔 있는데 요청엔 없는 것)
         for (String url : currentUrls) {
             if (!remainingUrls.contains(url)) {
                 fileStorageService.deleteFile(url);
             }
         }
 
-        // 2. 새 이미지 저장 및 추가
+        // 2. 새 이미지 저장
         if (newImages != null && !newImages.isEmpty()) {
             for (MultipartFile file : newImages) {
                 if (!file.isEmpty()) {
@@ -114,12 +125,12 @@ public class ProjectService {
             }
         }
 
+        // 3. 정보 업데이트
         List<String> normalizedTechStack = request.getTechStack().stream()
                 .map(String::trim).map(String::toLowerCase).collect(Collectors.toList());
 
-        // 3. 업데이트 수행 (Project 엔티티의 update 메소드 수정 필요 - imageUrls 인자 추가)
         project.update(request.getTitle(), request.getDescription(), normalizedTechStack, request.getGithubUrl(), request.getWebsiteUrl());
-        project.setImageUrls(remainingUrls); // 이미지 리스트 갱신
+        project.setImageUrls(remainingUrls);
 
         return convertToResponse(project);
     }
@@ -130,16 +141,40 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트가 존재하지 않습니다."));
 
-        // 작성자 본인 확인
         if (!project.getMember().getUsername().equals(username)) {
             throw new IllegalArgumentException("삭제 권한이 없습니다.");
         }
 
+        // 프로젝트 삭제 시 연결된 이미지 파일들도 로컬 스토리지에서 삭제
+        project.getImageUrls().forEach(fileStorageService::deleteFile);
+
         projectRepository.delete(project);
     }
 
-    // (내부 헬퍼 메소드) Entity -> DTO 변환
+    // 좋아요 토글 기능
+    @Transactional
+    public void toggleLike(Long projectId, String username) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
+
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        if (project.getLikes().contains(member)) {
+            project.getLikes().remove(member);
+        } else {
+            project.getLikes().add(member);
+        }
+    }
+
+    // [개선됨] DTO 변환 메소드 통합 (중복 제거)
+    // 1. username이 없는 경우 (목록 조회용) -> null을 넘겨서 재사용
     private ProjectDto.Response convertToResponse(Project p) {
+        return convertToResponse(p, null);
+    }
+
+    // 2. username이 있는 경우 (상세 조회용, 좋아요 여부 확인)
+    private ProjectDto.Response convertToResponse(Project p, String currentUsername) {
         ProjectDto.Response dto = new ProjectDto.Response();
         dto.setId(p.getId());
         dto.setTitle(p.getTitle());
@@ -149,18 +184,24 @@ public class ProjectService {
         dto.setTechStack(p.getTechStack());
         dto.setImageUrls(p.getImageUrls());
 
+        // 통계 정보 설정 (목록/상세 모두 포함됨)
+        dto.setViewCount(p.getViewCount());
+        dto.setLikeCount(p.getLikes().size());
+
+        // 좋아요 여부 확인
+        if (currentUsername != null) {
+            boolean liked = p.getLikes().stream()
+                    .anyMatch(m -> m.getUsername().equals(currentUsername));
+            dto.setLiked(liked);
+        } else {
+            dto.setLiked(false);
+        }
+
         if (p.getMember() != null) {
             dto.setMemberId(p.getMember().getId());
             dto.setAuthorName(p.getMember().getNickname());
             dto.setAuthorJob(p.getMember().getJobTitle());
         }
         return dto;
-    }
-
-    // 프로젝트 상세 조회
-    public ProjectDto.Response getProject(Long id) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
-        return convertToResponse(project);
     }
 }

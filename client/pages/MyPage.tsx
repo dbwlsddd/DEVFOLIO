@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { authHeader, getUser } from "@/lib/auth";
 import { Project } from "@shared/api";
 import Header from "@/components/Header";
-import { Link } from "wouter"; // [수정 1] react-router-dom -> wouter
+import { Link } from "wouter";
 import { ExternalLink, Github, Plus } from "lucide-react";
 
 export default function MyPage() {
@@ -27,7 +27,6 @@ export default function MyPage() {
             <h1 className="text-3xl font-bold">{user.nickname}'s Portfolio</h1>
             <p className="text-muted-foreground mt-1">@{user.username}</p>
           </div>
-          {/* [수정 2] Link to -> Link href */}
           <Link href="/project/create" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition">
             <Plus size={16} /> Add Project
           </Link>
@@ -39,19 +38,29 @@ export default function MyPage() {
           ) : (
             projects.map((p) => (
               <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
-                {p.imageUrls && p.imageUrls.length > 0 ? (
-                  <img src={p.imageUrls[0]} alt={p.title} className="w-full h-48 object-cover bg-gray-100" />
-                ) : (
-                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
-                )}
+                {/* [수정] 이미지 영역을 클릭하면 상세 페이지로 이동 */}
+                <Link href={`/project/${p.id}`} className="block cursor-pointer">
+                  {p.imageUrls && p.imageUrls.length > 0 ? (
+                    <img src={p.imageUrls[0]} alt={p.title} className="w-full h-48 object-cover bg-gray-100" />
+                  ) : (
+                    <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">No Image</div>
+                  )}
+                </Link>
+
                 <div className="p-5">
-                  <h3 className="font-bold text-lg mb-2">{p.title}</h3>
+                  {/* [수정] 제목을 클릭하면 상세 페이지로 이동 */}
+                  <Link href={`/project/${p.id}`} className="block cursor-pointer">
+                    <h3 className="font-bold text-lg mb-2 hover:text-primary transition">{p.title}</h3>
+                  </Link>
+
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{p.description}</p>
+
                   <div className="flex flex-wrap gap-2 mb-4">
                     {p.techStack.map((t, i) => (
                       <span key={i} className="text-xs bg-secondary px-2 py-1 rounded">{t}</span>
                     ))}
                   </div>
+
                   <div className="flex gap-3">
                     {p.githubUrl && <a href={p.githubUrl} target="_blank" className="text-gray-600 hover:text-black"><Github size={18} /></a>}
                     {p.websiteUrl && <a href={p.websiteUrl} target="_blank" className="text-gray-600 hover:text-black"><ExternalLink size={18} /></a>}

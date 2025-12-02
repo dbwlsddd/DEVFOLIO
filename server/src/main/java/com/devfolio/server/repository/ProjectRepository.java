@@ -1,21 +1,16 @@
-// server/src/main/java/com/devfolio/server/repository/ProjectRepository.java
 package com.devfolio.server.repository;
 
 import com.devfolio.server.domain.Project;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
-    // 내 프로젝트 목록 보기 (특정 회원의 프로젝트)
-    List<Project> findByMemberUsername(String username);
+    // [수정] 반환 타입 List -> Page, 파라미터에 Pageable 추가
+    Page<Project> findByTechStackContaining(String techStack, Pageable pageable);
 
-    // [프로젝트 탐색] 제목으로 검색
-    List<Project> findByTitleContaining(String keyword);
+    Page<Project> findByTitleContaining(String title, Pageable pageable);
 
-    // [프로젝트 탐색] 기술 스택으로 검색
-    @Query("SELECT DISTINCT p FROM Project p JOIN p.techStack t WHERE t LIKE %:stack%")
-    List<Project> findByTechStackContaining(@Param("stack") String stack);
+    // findAll(Pageable)은 JpaRepository에 이미 포함되어 있어서 추가 안 해도 됨
 }
