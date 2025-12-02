@@ -1,73 +1,101 @@
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { Project, Member } from "@shared/api";
-import { ExternalLink, Github, Search, User, ChevronLeft, ChevronRight } from "lucide-react"; // 아이콘 추가
+import { ExternalLink, Github, Search, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// [삭제] 기존 Tabs 컴포넌트 import 제거
+// import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button"; // 버튼 컴포넌트 추가
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion"; // [추가] 모션 라이브러리
 
 export default function Index() {
   const [viewMode, setViewMode] = useState<"developers" | "projects">("developers");
-  const [items, setItems] = useState<(Project | Member)[]>([]); // 리스트 데이터
+  const [items, setItems] = useState<(Project | Member)[]>([]);
   const [keyword, setKeyword] = useState("");
   const [searchType, setSearchType] = useState<"name" | "stack">("name");
 
-  // [추가] 페이지네이션 상태
-  const [page, setPage] = useState(0); // 현재 페이지 (0부터 시작)
-  const [totalPages, setTotalPages] = useState(0); // 전체 페이지 수
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
-    // 탭이나 검색어가 바뀌면 0페이지로 초기화
     setPage(0);
   }, [viewMode, keyword, searchType]);
 
   useEffect(() => {
     const endpoint = viewMode === "developers" ? "/api/members" : "/api/projects";
-
-    // 쿼리 파라미터에 page와 size 추가 (size=9 추천)
     const query = `?page=${page}&size=9&keyword=${keyword}&type=${searchType}`;
 
     fetch(`${endpoint}${query}`)
       .then(res => res.json())
       .then(data => {
-        // [수정] 백엔드 응답 구조 변경 대응
-        // Page 객체로 오면 data.content가 실제 리스트, data.totalPages가 전체 페이지 수
         if (data.content) {
           setItems(data.content);
           setTotalPages(data.totalPages);
         } else {
-          // 혹시라도 배열로 오면 (Member 쪽을 아직 수정 안 했다면) 기존 방식 처리
           setItems(Array.isArray(data) ? data : []);
           setTotalPages(1);
         }
       })
       .catch(console.error);
-  }, [viewMode, keyword, searchType, page]); // page가 바뀔 때도 다시 fetch
+  }, [viewMode, keyword, searchType, page]);
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <section className="bg-white py-20 px-6 text-center">
         <h1 className="text-5xl font-bold mb-6">Discover Devfolio</h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
           전 세계 개발자들과 그들의 놀라운 프로젝트를 탐색하세요.
         </p>
 
-        {/* --- 검색 및 필터 컨트롤 --- */}
-        <div className="max-w-2xl mx-auto space-y-4">
+        {/* --- [수정] 슬라이딩 탭 디자인 (Framer Motion) --- */}
+        <div className="max-w-2xl mx-auto space-y-6">
           <div className="flex justify-center">
-            <Tabs defaultValue="developers" onValueChange={(val) => setViewMode(val as any)} className="w-[400px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="developers">Developers</TabsTrigger>
-                <TabsTrigger value="projects">Projects</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="relative flex p-1 bg-slate-100 rounded-full w-[300px] h-[50px]">
+
+              {/* Developers 탭 */}
+              <button
+                onClick={() => setViewMode("developers")}
+                className={`relative flex-1 text-sm font-semibold rounded-full z-10 transition-colors duration-200 ${
+                  viewMode === "developers" ? "text-black" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Developers
+                {/* 선택되었을 때만 뒤에 하얀 배경이 깔림 (layoutId로 연결됨) */}
+                {viewMode === "developers" && (
+                  <motion.div
+                    layoutId="active-pill"
+                    className="absolute inset-0 bg-white rounded-full shadow-sm border border-black/5"
+                    style={{ zIndex: -1 }} // 글자보다 뒤에 가도록
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} // 쫀득한 스프링 효과
+                  />
+                )}
+              </button>
+
+              {/* Projects 탭 */}
+              <button
+                onClick={() => setViewMode("projects")}
+                className={`relative flex-1 text-sm font-semibold rounded-full z-10 transition-colors duration-200 ${
+                  viewMode === "projects" ? "text-black" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Projects
+                {viewMode === "projects" && (
+                  <motion.div
+                    layoutId="active-pill"
+                    className="absolute inset-0 bg-white rounded-full shadow-sm border border-black/5"
+                    style={{ zIndex: -1 }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-2">
             <select
-              className="border rounded px-3 text-sm"
+              className="border rounded px-3 text-sm h-10"
               value={searchType}
               onChange={(e) => setSearchType(e.target.value as "name" | "stack")}
             >
@@ -78,7 +106,7 @@ export default function Index() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <Input
                 placeholder={`Search ${viewMode}...`}
-                className="pl-10"
+                className="pl-10 h-10"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
@@ -94,7 +122,6 @@ export default function Index() {
           {items.map((item: any) => (
             <div key={item.id} className="group bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition flex flex-col h-full">
 
-              {/* 이미지 영역 */}
               {viewMode === "projects" ? (
                 <Link href={`/project/${item.id}`} className="cursor-pointer block">
                   {item.imageUrls && item.imageUrls.length > 0 ? (
@@ -122,7 +149,6 @@ export default function Index() {
                   {viewMode === "projects" && (
                     <div className="flex flex-col items-end">
                       <span className="text-xs text-muted-foreground">by {item.authorName}</span>
-                      {/* 조회수/좋아요 표시 (백엔드 추가 적용 시) */}
                       {(item.viewCount !== undefined) && (
                         <span className="text-xs text-gray-400 mt-1">👀 {item.viewCount}</span>
                       )}
@@ -137,7 +163,6 @@ export default function Index() {
                   {viewMode === "developers" ? item.bio || "No bio available." : item.description}
                 </p>
 
-                {/* 태그 부분 */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {(item.techStack || []).slice(0, 4).map((t: string, i: number) => (
                     <span key={i} className="text-xs border px-2 py-1 rounded bg-gray-50">{t}</span>
@@ -146,7 +171,6 @@ export default function Index() {
                     <span className="text-xs text-muted-foreground">+{item.techStack.length - 4}</span>}
                 </div>
 
-                {/* 하단 버튼 영역 */}
                 <div className="flex justify-between items-center mt-auto pt-4 border-t">
                   {viewMode === "developers" ? (
                     <Link href={`/portfolio/${item.id}`} className="text-sm font-medium hover:underline text-primary">
@@ -169,7 +193,7 @@ export default function Index() {
           ))}
         </div>
 
-        {/* [추가] 페이지네이션 UI */}
+        {/* 페이지네이션 UI */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center gap-4 mt-12">
             <Button

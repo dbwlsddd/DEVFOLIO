@@ -36,15 +36,14 @@ public class Project {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
-    @JsonIgnore
+    @JsonIgnore // 기존에 추가한 것 (작성자 무한 참조 방지)
     private Member member;
 
-    // [추가] 조회수 (기본값 0)
     @Column(columnDefinition = "bigint default 0")
     @Builder.Default
     private Long viewCount = 0L;
 
-    // [추가] 좋아요 (다대다 관계: 한 프로젝트를 여러 회원이 좋아할 수 있음)
+    // [수정] JSON 변환 시 무한 루프 방지를 위해 @JsonIgnore 추가
     @ManyToMany
     @JoinTable(
             name = "project_likes",
@@ -52,6 +51,7 @@ public class Project {
             inverseJoinColumns = @JoinColumn(name = "member_id")
     )
     @Builder.Default
+    @JsonIgnore // [중요] 여기를 추가해주세요!
     private Set<Member> likes = new HashSet<>();
 
     public void setMember(Member member) {
